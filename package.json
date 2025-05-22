@@ -1,0 +1,18 @@
+{
+  "name": "ipdc-bookmarks-service",
+  "version": "0.0.0",
+  "description": "Microservice managing a user's bookmarks for IPDC products",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Erika Pauwels <erika.pauwels@redpencil.io>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lblod/ipdc-bookmarks-service.git"
+  },
+  "dependencies": {
+    "@lblod/mu-auth-sudo": "^0.6.2"
+  }
+}
