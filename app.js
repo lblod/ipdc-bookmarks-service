@@ -1,6 +1,16 @@
 import { app, errorHandler } from 'mu';
+import bodyParser from 'body-parser';
 import { getSessionUri } from './utils';
-import { bookmarkToJsonApi, createBookmark, deleteBookmark, getBookmark, getIPDCService, listBookmarks } from './bookmarks';
+import { bookmarkToJsonApi, createBookmark, deleteBookmark, getBookmark, getIPDCService, listBookmarks, hasAccountPrepopulatedBookmarks, setAccountPrepopulatedBookmarks, prepopulateBookmarksForSession } from './bookmarks';
+
+app.use(
+  bodyParser.json({
+    type: function (req) {
+      return /^application\/json/.test(req.get('Content-Type'));
+    },
+    limit: '50MB',
+  }),
+);
 
 app.get('/bookmarks', async function(req, res) {
   const sessionUri = getSessionUri(req);
@@ -28,6 +38,24 @@ app.delete('/bookmarks/:id', async function(req, res) {
     await deleteBookmark(bookmark.uri);
   }
   res.status(204).send();
+});
+
+app.post('/delta', async function (req, res) {
+  const sessions = new Set();
+  req.body.forEach((changeset) => {
+    changeset.inserts.forEach((insert) => {
+      if (insert.predicate.value === 'http://mu.semte.ch/vocabularies/ext/sessionRole') {
+        sessions.add(insert.subject.value);
+      }
+    });
+  });
+  for (const session of sessions) {
+    const hasPrepopulated = await hasAccountPrepopulatedBookmarks(session);
+    if (!hasPrepopulated) {
+      await prepopulateBookmarksForSession(session);
+      await setAccountPrepopulatedBookmarks(session);
+    }
+  }
 });
 
 app.use(errorHandler);
