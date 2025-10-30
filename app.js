@@ -3,6 +3,8 @@ import bodyParser from 'body-parser';
 import { getSessionUri } from './utils';
 import { bookmarkToJsonApi, createBookmark, deleteBookmark, getBookmark, getIPDCService, listBookmarks, hasAccountPrepopulatedBookmarks, setAccountPrepopulatedBookmarks, prepopulateBookmarksForSession } from './bookmarks';
 
+const BOOKMARK_POPULATE_MAX_DELAY_S = parseInt(process.env?.BOOKMARK_POPULATE_MAX_DELAY_S) || 10;
+
 app.use(
   bodyParser.json({
     type: function (req) {
@@ -15,6 +17,14 @@ app.use(
 app.get('/bookmarks', async function(req, res, next) {
   try {
     const sessionUri = getSessionUri(req);
+
+    // Loop to wait until bookmarks have been prepopulated. Wait at most the specified max delay in seconds.
+    let hasPrepopulated = await hasAccountPrepopulatedBookmarks(sessionUri);
+    for (let i = 0; i < BOOKMARK_POPULATE_MAX_DELAY_S && !hasPrepopulated; i++) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      hasPrepopulated = await hasAccountPrepopulatedBookmarks(sessionUri);
+    }
+
     const bookmarks = await listBookmarks(sessionUri);
     const data = bookmarks.map(bookmarkToJsonApi);
     res.send({ data });
