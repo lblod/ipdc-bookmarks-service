@@ -5,15 +5,6 @@ import { bookmarkToJsonApi, createBookmark, deleteBookmark, getBookmark, getIPDC
 
 const BOOKMARK_POPULATE_MAX_DELAY_S = parseInt(process.env?.BOOKMARK_POPULATE_MAX_DELAY_S) || 10;
 
-app.use(
-  bodyParser.json({
-    type: function (req) {
-      return /^application\/json/.test(req.get('Content-Type'));
-    },
-    limit: '50MB',
-  }),
-);
-
 app.get('/bookmarks', async function(req, res, next) {
   try {
     const sessionUri = getSessionUri(req);
@@ -65,6 +56,15 @@ app.delete('/bookmarks/:id', async function(req, res, next) {
   }
 });
 
+app.use(
+  '/delta',
+  bodyParser.json({
+    type: function (req) {
+      return /^application\/json/.test(req.get('Content-Type'));
+    },
+    limit: '50MB',
+  }),
+);
 app.post('/delta', async function (req, res, next) {
   try {
     const sessions = new Set();
