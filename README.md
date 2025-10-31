@@ -15,6 +15,10 @@ ipdc-bookmarks:
 The following environment variables can be configured on the service.
 
 - **MU_APPLICATION_GRAPH** (default: `http://mu.semte.ch/graphs/ipdc/bookmarks`)
+- **BOOKMARK_POPULATE_MAX_DELAY_S** (default: 10): maximum wait time in seconds
+for the retrieval of bookmarks to stall until the default bookmarking process
+has finished. This time has to include waiting for deltas to arrive and the
+processing of bookmarks for a first login of a user.
 
 ### Data model
 #### Prefixes
