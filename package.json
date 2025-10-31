@@ -1,6 +1,6 @@
 {
   "name": "ipdc-bookmarks-service",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Microservice managing a user's bookmarks for IPDC products",
   "main": "app.js",
   "scripts": {
