@@ -1,5 +1,6 @@
 import { uuid, sparqlEscapeUri, sparqlEscapeString, sparqlEscapeDateTime } from 'mu';
 import { querySudo, updateSudo } from '@lblod/mu-auth-sudo';
+import bookmarkdefaults from './config/bookmarkdefaults';
 
 const prefixes = `
   PREFIX nfo: <http://www.semanticdesktop.org/ontologies/2007/03/22/nfo#>
@@ -9,7 +10,8 @@ const prefixes = `
   PREFIX nie: <http://www.semanticdesktop.org/ontologies/2007/01/19/nie#>
   PREFIX nco: <http://www.semanticdesktop.org/ontologies/2007/03/22/nco#>
   PREFIX foaf: <http://xmlns.com/foaf/0.1/>
-`
+  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+`;
 const graph = process.env.MU_APPLICATION_GRAPH;
 
 export async function getIPDCService(id) {
@@ -133,5 +135,57 @@ export function bookmarkToJsonApi(bookmark) {
       modified: bookmark.modified.toISOString(),
       object: bookmark.object
     }
+  }
+}
+
+export async function hasAccountPrepopulatedBookmarks(sessionUri) {
+  const results = await querySudo(`
+    ${prefixes}
+    ASK {
+      ${sparqlEscapeUri(sessionUri)} muSession:account ?account .
+      ?account ext:prepopulatedBookmarks ?datetime .
+    }
+  `);
+  return results?.boolean;
+}
+
+export async function setAccountPrepopulatedBookmarks(sessionUri) {
+  return updateSudo(`
+    ${prefixes}
+    INSERT {
+      GRAPH ?g {
+        ?account ext:prepopulatedBookmarks ?now .
+      }
+    }
+    WHERE {
+      BIND (NOW() AS ?now)
+      GRAPH ?g {
+        ${sparqlEscapeUri(sessionUri)} muSession:account ?account .
+      }
+    }
+  `);
+}
+
+export async function prepopulateBookmarksForSession(sessionUri) {
+  // Get sessionRoles
+  const sessionRolesResult = await querySudo(`
+    ${prefixes}
+    SELECT ?sessionRole WHERE {
+      ${sparqlEscapeUri(sessionUri)} ext:sessionRole ?sessionRole .
+    }
+  `);
+  const sessionRoles = sessionRolesResult.results.bindings.map((b) => b.sessionRole.value);
+
+  // Translate the roles to default bookmarks
+  const bookmarkProducts = new Set();
+  for (const role of sessionRoles) {
+    const product = bookmarkdefaults[role];
+    if (product)
+      bookmarkProducts.add(product);
+  }
+
+  // Store the bookmarks
+  for (const bookmarkProduct of bookmarkProducts) {
+    await createBookmark(sessionUri, bookmarkProduct);
   }
 }

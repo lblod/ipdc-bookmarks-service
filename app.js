@@ -1,33 +1,91 @@
 import { app, errorHandler } from 'mu';
+import bodyParser from 'body-parser';
 import { getSessionUri } from './utils';
-import { bookmarkToJsonApi, createBookmark, deleteBookmark, getBookmark, getIPDCService, listBookmarks } from './bookmarks';
+import { bookmarkToJsonApi, createBookmark, deleteBookmark, getBookmark, getIPDCService, listBookmarks, hasAccountPrepopulatedBookmarks, setAccountPrepopulatedBookmarks, prepopulateBookmarksForSession } from './bookmarks';
 
-app.get('/bookmarks', async function(req, res) {
-  const sessionUri = getSessionUri(req);
-  const bookmarks = await listBookmarks(sessionUri);
-  const data = bookmarks.map(bookmarkToJsonApi);
-  res.send({ data });
-});
+const BOOKMARK_POPULATE_MAX_DELAY_S = parseInt(process.env?.BOOKMARK_POPULATE_MAX_DELAY_S) || 10;
 
-app.post('/public-services/:id/bookmarks', async function(req, res) {
-  const sessionUri = getSessionUri(req);
-  const ipdcService = await getIPDCService(req.params.id);
-  if (ipdcService) {
-    const bookmark = await createBookmark(sessionUri, ipdcService);
-    const data = bookmarkToJsonApi(bookmark);
-    res.status(201).send({ data })
-  } else {
-    res.status(404).send();
+app.get('/bookmarks', async function(req, res, next) {
+  try {
+    const sessionUri = getSessionUri(req);
+
+    // Loop to wait until bookmarks have been prepopulated. Wait at most the specified max delay in seconds.
+    let hasPrepopulated = await hasAccountPrepopulatedBookmarks(sessionUri);
+    for (let i = 0; i < BOOKMARK_POPULATE_MAX_DELAY_S && !hasPrepopulated; i++) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      hasPrepopulated = await hasAccountPrepopulatedBookmarks(sessionUri);
+    }
+
+    const bookmarks = await listBookmarks(sessionUri);
+    const data = bookmarks.map(bookmarkToJsonApi);
+    res.send({ data });
+  } catch (error) {
+    console.error(error.message);
+    next(error);
   }
 });
 
-app.delete('/bookmarks/:id', async function(req, res) {
-  const sessionUri = getSessionUri(req);
-  const bookmark = await getBookmark(req.params.id, sessionUri);
-  if (bookmark) {
-    await deleteBookmark(bookmark.uri);
+app.post('/public-services/:id/bookmarks', async function(req, res, next) {
+  try {
+    const sessionUri = getSessionUri(req);
+    const ipdcService = await getIPDCService(req.params.id);
+    if (ipdcService) {
+      const bookmark = await createBookmark(sessionUri, ipdcService);
+      const data = bookmarkToJsonApi(bookmark);
+      res.status(201).send({ data })
+    } else {
+      res.status(404).send();
+    }
+  } catch (error) {
+    console.error(error.message);
+    next(error);
   }
-  res.status(204).send();
+});
+
+app.delete('/bookmarks/:id', async function(req, res, next) {
+  try {
+    const sessionUri = getSessionUri(req);
+    const bookmark = await getBookmark(req.params.id, sessionUri);
+    if (bookmark) {
+      await deleteBookmark(bookmark.uri);
+    }
+    res.status(204).send();
+  } catch (error) {
+    console.error(error.message);
+    next(error);
+  }
+});
+
+app.use(
+  '/delta',
+  bodyParser.json({
+    type: function (req) {
+      return /^application\/json/.test(req.get('Content-Type'));
+    },
+    limit: '50MB',
+  }),
+);
+app.post('/delta', async function (req, res, next) {
+  try {
+    const sessions = new Set();
+    req.body.forEach((changeset) => {
+      changeset.inserts.forEach((insert) => {
+        if (insert.predicate.value === 'http://mu.semte.ch/vocabularies/ext/sessionRole') {
+          sessions.add(insert.subject.value);
+        }
+      });
+    });
+    for (const session of sessions) {
+      const hasPrepopulated = await hasAccountPrepopulatedBookmarks(session);
+      if (!hasPrepopulated) {
+        await prepopulateBookmarksForSession(session);
+        await setAccountPrepopulatedBookmarks(session);
+      }
+    }
+  } catch (error) {
+    console.error(error.message);
+    next(error);
+  }
 });
 
 app.use(errorHandler);
