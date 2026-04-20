@@ -2,7 +2,7 @@ export default {
   "LoketLB-bbcdrGebruiker": "https://ipdc.vlaanderen.be/id/instantie/1a49a2bd-65e2-48b5-87d7-3b98c70293cb",
   "LoketLB-mandaatGebruiker": "https://ipdc.vlaanderen.be/id/instantie/a3f1a473-caf3-4b4b-8109-96e52bcc2ba8",
   "LoketLB-toezichtGebruiker": "https://ipdc.vlaanderen.be/id/instantie/2703645b-b650-4674-bb03-5fcef8082662",
-  "LoketLB-berichtenGebruiker": "https://ipdc.vlaanderen.be/id/instantie/2703645b-b650-4674-bb03-5fcef8082662",
+  "LoketLB-berichtenGebruiker": "https://ipdc.vlaanderen.be/id/instantie/95b94b1c-4afc-4e79-a2e1-97f993bc0cb8",
   "LoketLB-leidinggevendenGebruiker": "https://ipdc.vlaanderen.be/id/instantie/654c6fe2-d7b6-425f-8996-93f9367e71f9",
   "LoketLB-personeelsbeheer": "https://ipdc.vlaanderen.be/id/instantie/28e23f5f-2a28-4170-a914-b4da82a876ba",
   "LoketLB-LPDCGebruiker": "https://ipdc.vlaanderen.be/id/instantie/ebda2792-9908-4523-900d-b922b002b746",
