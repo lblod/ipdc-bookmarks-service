@@ -66,6 +66,9 @@ app.use(
   }),
 );
 app.post('/delta', async function (req, res, next) {
+  //We can already send a 200 back. The delta-notifier does not care about the result, as long as the request is closed.
+  res.status(200).send().end();
+
   try {
     const sessions = new Set();
     req.body.forEach((changeset) => {
@@ -84,7 +87,6 @@ app.post('/delta', async function (req, res, next) {
     }
   } catch (error) {
     console.error(error.message);
-    next(error);
   }
 });
 
