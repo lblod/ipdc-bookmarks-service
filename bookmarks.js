@@ -45,9 +45,40 @@ export async function createBookmark(sessionUri, object) {
   } WHERE {
     ${sparqlEscapeUri(sessionUri)} muSession:account ?account .
     ?user foaf:account ?account .
+    FILTER NOT EXISTS {
+      GRAPH ${sparqlEscapeUri(graph)} {
+        ?existing nfo:bookmarks ${sparqlEscapeUri(object)} ;
+                  nco:creator ?user .
+      }
+    }
   }`);
 
-  return { id, uri, created: now, modified: now, object };
+
+  const result = await querySudo(`
+  ${prefixes}
+  SELECT ?bookmark ?uuid ?created ?modified
+  WHERE {
+    ${sparqlEscapeUri(sessionUri)} muSession:account ?account .
+    ?user foaf:account ?account .
+    GRAPH ${sparqlEscapeUri(graph)} {
+      ?bookmark a nfo:Bookmark ;
+        mu:uuid ?uuid ;
+        nie:contentCreated ?created ;
+        nie:contentLastModified ?modified ;
+        nfo:bookmarks ${sparqlEscapeUri(object)} ;
+        nco:creator ?user .
+    }
+  } LIMIT 1
+  `);
+
+  const binding = result.results.bindings[0];
+  return {
+    id: binding['uuid'].value,
+    uri: binding['bookmark'].value,
+    created: new Date(Date.parse(binding['created'].value)),
+    modified: new Date(Date.parse(binding['modified'].value)),
+    object,
+  };
 }
 
 export async function getBookmark(id, sessionUri) {
